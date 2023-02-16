@@ -1,10 +1,11 @@
+using System.Diagnostics;
 using LanguageModel;
 
 namespace Analysis;
 
 public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<ParentAssignmentsContext>
 {
-    public ParentAssignmentsContext CreateEmptyContext() => new();
+    public ParentAssignmentsContext CreateEmptyContext(IProgramDeclarations declarations) => new(declarations);
 
     public void AnalyzeAssignVariable(ParentAssignmentsContext context, AssignVariable statement)
     {
@@ -18,10 +19,7 @@ public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<Par
     public void AnalyzeInvocation(ParentAssignmentsContext context, Invocation invocation,
         ParentAssignmentsContext invokedMethodContext, IInvokedMethodContextProvider contextProvider)
     {
-        if (invocation.IsConditional)
-        {
-            return;
-        }
+        Debug.Assert(!invocation.IsConditional, "Conditional invocations should not be processed");
 
         foreach (var assignment in invokedMethodContext.ParentContextDefiniteAssignments)
         {
@@ -29,6 +27,8 @@ public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<Par
             AnaliseVariableAssignment(context, assignment);
         }
     }
+
+    public bool NeedToProcessInvocation(Invocation invocation) => !invocation.IsConditional;
     
     private static void AnaliseVariableAssignment(ParentAssignmentsContext context, string variableName)
     {
@@ -43,6 +43,11 @@ public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<Par
 
 public sealed class ParentAssignmentsContext
 {
+    public ParentAssignmentsContext(IProgramDeclarations declarations)
+    {
+        CurrentContextVariableDeclarations = declarations.CurrentContextVariables;
+    }
+
     public IReadOnlySet<string> CurrentContextVariableDeclarations { get; }
     public HashSet<string> ParentContextDefiniteAssignments { get; } = new();
 }

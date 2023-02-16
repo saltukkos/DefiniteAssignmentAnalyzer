@@ -16,7 +16,7 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
         _inspectionDescriptorCollector = inspectionDescriptorCollector;
     }
 
-    public DefiniteAssignmentContext CreateEmptyContext() => new();
+    public DefiniteAssignmentContext CreateEmptyContext(IProgramDeclarations declarations) => new(declarations);
 
     public void AnalyzeAssignVariable(DefiniteAssignmentContext context, AssignVariable statement)
     {
@@ -27,6 +27,8 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
     {
         AnalyzeVariableAccess(context, statement.VariableName, statement);
     }
+
+    public bool NeedToProcessInvocation(Invocation invocation) => true;
 
     public void AnalyzeInvocation(DefiniteAssignmentContext context, Invocation invocation,
         DefiniteAssignmentContext invokedMethodContext, IInvokedMethodContextProvider contextProvider)
@@ -67,6 +69,11 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
 
 public sealed class DefiniteAssignmentContext
 {
+    public DefiniteAssignmentContext(IProgramDeclarations programDeclarations)
+    {
+        CurrentContextVariableDeclarations = programDeclarations.CurrentContextVariables;
+    }
+
     public IReadOnlySet<string> CurrentContextVariableDeclarations { get; }
     public HashSet<string> CurrentContextAssignments { get; } = new();
     public HashSet<string> ParentContextAssignDependencies { get; } = new();
