@@ -23,4 +23,6 @@ public sealed class InspectionDescriptorCollector
 
         _inspections.Add(location, new HashSet<IInspectionDescriptor> {inspectionDescriptor});
     }
+
+    public IReadOnlyDictionary<IStatement, HashSet<IInspectionDescriptor>> GetInspections() => _inspections;
 }

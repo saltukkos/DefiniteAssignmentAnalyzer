@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Analysis;
@@ -28,7 +29,10 @@ public sealed class UniqueElementsStack<T> where T : notnull
 
     public T Pop()
     {
-        return _stack.Pop();
+        var element = _stack.Pop();
+        var removed = _indices.Remove(element);
+        Debug.Assert(removed, "Can't delete index for existing element");
+        return element;
     }
 
     public void Push(T element)
