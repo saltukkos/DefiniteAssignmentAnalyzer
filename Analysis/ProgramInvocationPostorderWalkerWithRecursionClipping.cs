@@ -8,10 +8,6 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
     private readonly AnalyzerResultsStorage _analyzerResultsStorage;
     private readonly Dictionary<IProgramDeclarations, TContext> _builtContexts = new();
 
-    private int _topRecursionPosition;
-    private bool _stackReturn;
-    private TContext? _stackReturnValue;
-    
     public ProgramInvocationPostorderWalkerWithRecursionClipping(
         IProgramDeclarations programDeclarations,
         IPostorderMethodStateAnalyzer<TContext> methodStateAnalyzer,
@@ -24,7 +20,7 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
     }
 
     protected override bool TryProcessStatement(
-        IStatement statement, TContext context, IProgramDeclarations declarations, int stackDepth)
+        IStatement statement, TContext context, IProgramDeclarations declarations)
     {
         if (statement is not Invocation invocation)
         {
@@ -39,14 +35,6 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
             return true;
         }
 
-        if (_stackReturn)
-        {
-            _stackReturn = false;
-            var invokedMethodContextProvider = _analyzerResultsStorage.GetProviderFor(declaration);
-            _methodStateAnalyzer.AnalyzeInvocation(context, invocation, _stackReturnValue!, invokedMethodContextProvider);
-            return true;
-        }
-        
         if (_builtContexts.TryGetValue(declaration, out var builtContext))
         {
             var invokedMethodContextProvider = _analyzerResultsStorage.GetProviderFor(declaration);
@@ -55,17 +43,11 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
         }
 
         var emptyContext = _methodStateAnalyzer.CreateEmptyContext(declaration);
-        if (!TryPushDeclarationToProcess(declaration, emptyContext, out var recursionPosition))
+        if (!TryPushDeclarationToProcess(declaration, emptyContext))
         {
             var invokedMethodContextProvider = _analyzerResultsStorage.GetProviderFor(declaration);
             _methodStateAnalyzer.AnalyzeInvocation(context, invocation, emptyContext, invokedMethodContextProvider);
-            _topRecursionPosition = Math.Min(recursionPosition, _topRecursionPosition);
             return true;
-        }
-
-        if (_topRecursionPosition == stackDepth - 1)
-        {
-            _topRecursionPosition++;
         }
 
         return false;
@@ -76,16 +58,9 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
         return _methodStateAnalyzer.CreateEmptyContext(programDeclarations);
     }
 
-    protected override void OnDeclarationProcessingFinished(
-        IProgramDeclarations declarations, TContext context, int stackDepth)
+    protected override void OnDeclarationProcessingFinished(IProgramDeclarations declarations, TContext context)
     {
-        _stackReturn = true;
-        _stackReturnValue = context;
-        //TODO We can save result locally to reuse it in case of the same recursive call from the current method
-        if (stackDepth <= _topRecursionPosition)
-        {
-            _builtContexts.Add(declarations, context);
-        }
+        _builtContexts.Add(declarations, context);
     }
 
     private sealed class StatementVisitor : IStatementVisitor

@@ -17,13 +17,13 @@ public sealed class ProgramDeclarationPreorderWalker<TContext> : WalkerBase<TCon
     }
 
     protected override bool TryProcessStatement(
-        IStatement statement, TContext context, IProgramDeclarations declarations, int stackDepth)
+        IStatement statement, TContext context, IProgramDeclarations declarations)
     {
         var visitor = new StatementVisitor(_methodStateAnalyzer, declarations, context);
         statement.Accept(visitor);
         if (visitor.SawNewDeclaration)
         {
-            var pushed = TryPushDeclarationToProcess(visitor.NewDeclaration, visitor.CurrentContext, out _);
+            var pushed = TryPushDeclarationToProcess(visitor.NewDeclaration, visitor.CurrentContext);
             Debug.Assert(pushed, "Declarations analysis could not lead to cycle. Is AST not actually a tree?");
         }
 
@@ -35,8 +35,7 @@ public sealed class ProgramDeclarationPreorderWalker<TContext> : WalkerBase<TCon
         return _methodStateAnalyzer.CreateEmptyContext(programDeclarations);
     }
 
-    protected override void OnDeclarationProcessingFinished(
-        IProgramDeclarations declarations, TContext context, int stackDepth)
+    protected override void OnDeclarationProcessingFinished(IProgramDeclarations declarations, TContext context)
     {
     }
     

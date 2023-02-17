@@ -50,7 +50,8 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
 
     private void AnalyzeVariableAccess(DefiniteAssignmentContext context, string variableName, IStatement statement)
     {
-        if (context.CurrentContextAssignments.Contains(variableName))
+        // We will consider all accessed variables as assigned after the statement to avoid producing same inspections
+        if (!context.CurrentContextAssignments.Add(variableName))
         {
             return;
         }

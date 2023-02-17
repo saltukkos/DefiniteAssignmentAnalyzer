@@ -6,18 +6,15 @@ namespace Analysis;
 public sealed class UniqueElementsStack<T> where T : notnull
 {
     private readonly Stack<T> _stack = new();
-    private readonly Dictionary<T, int> _indices = new();
+    private readonly HashSet<T> _existingElements = new();
 
-    public int Count => _stack.Count;
-    
-    public bool TryPush(T element, out int existingIndex)
+    public bool TryPush(T element)
     {
-        if (_indices.TryGetValue(element, out existingIndex))
+        if (!_existingElements.Add(element))
         {
             return false;
         }
         
-        _indices.Add(element, _stack.Count);
         _stack.Push(element);
         return true;
     }
@@ -30,14 +27,14 @@ public sealed class UniqueElementsStack<T> where T : notnull
     public T Pop()
     {
         var element = _stack.Pop();
-        var removed = _indices.Remove(element);
+        var removed = _existingElements.Remove(element);
         Debug.Assert(removed, "Can't delete index for existing element");
         return element;
     }
 
     public void Push(T element)
     {
-        if (!TryPush(element, out _))
+        if (!TryPush(element))
         {
             throw new InvalidOperationException("Stack already contains specified element");
         }

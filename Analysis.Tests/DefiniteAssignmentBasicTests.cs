@@ -492,7 +492,7 @@ func Foo2 {{
         print(a);
     }}
 
-    print(a); {ValidationHelper.Error(s => new UnassignedVariableUsageDescriptor(s, "a"))}
+    print(a);
 }}
 
 Foo();

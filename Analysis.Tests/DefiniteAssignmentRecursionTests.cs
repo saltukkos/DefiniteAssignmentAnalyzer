@@ -342,7 +342,7 @@ func Bar {{
 }}
 
 Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a"), new(s, "b")})}
-Bar(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a"), new(s, "b")})}
+Bar();
 ");
     }
 
@@ -389,8 +389,8 @@ Bar(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {ne
                     new PrintVariable("d"),
                 }
             },
-            new Invocation("Baz", false),
             new Invocation("Foo", false),
+            new Invocation("Baz", false),
             new Invocation("Qux", false),
             new Invocation("Bar", false),
         };
@@ -423,10 +423,10 @@ func Qux {{
     print(d);
 }}
 
-Baz(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a"), new(s, "b"), new(s, "c"), new(s, "d")})}
 Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a"), new(s, "b")})}
-Qux(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a"), new(s, "b"), new(s, "c"), new(s, "d")})}
-Bar(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a"), new(s, "b")})}
+Baz(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "c"), new(s, "d")})}
+Qux();
+Bar();
 ");
     }
 }

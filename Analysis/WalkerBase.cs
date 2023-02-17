@@ -23,32 +23,30 @@ public abstract class WalkerBase<TContext>
             if (position == program.Count)
             {
                 _analyzingStack.Pop();
-                OnDeclarationProcessingFinished(stackFrame.Declaration, stackFrame.Context, _analyzingStack.Count);
+                OnDeclarationProcessingFinished(stackFrame.Declaration, stackFrame.Context);
                 continue;
             }
 
             var nextStatement = program[position];
-            if (TryProcessStatement(nextStatement, stackFrame.Context, stackFrame.Declaration, _analyzingStack.Count))
+            if (TryProcessStatement(nextStatement, stackFrame.Context, stackFrame.Declaration))
             {
                 stackFrame.Position++;
             }
         }
     }
 
-    protected bool TryPushDeclarationToProcess(
-        IProgramDeclarations declarations, TContext context, out int recursionPosition)
+    protected bool TryPushDeclarationToProcess(IProgramDeclarations declarations, TContext context)
     {
         var nextFrame = new AnalyzingStackFrame(declarations, context);
-        return _analyzingStack.TryPush(nextFrame, out recursionPosition);
+        return _analyzingStack.TryPush(nextFrame);
     }
 
     protected abstract bool TryProcessStatement(IStatement statement, TContext context,
-        IProgramDeclarations declarations, int stackDepth);
+        IProgramDeclarations declarations);
 
     protected abstract TContext CreateContext(IProgramDeclarations programDeclarations);
 
-    protected abstract void OnDeclarationProcessingFinished(
-        IProgramDeclarations declarations, TContext context, int stackDepth);
+    protected abstract void OnDeclarationProcessingFinished(IProgramDeclarations declarations, TContext context);
 
     private sealed class AnalyzingStackFrame
     {
