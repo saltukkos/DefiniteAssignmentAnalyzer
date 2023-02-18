@@ -166,6 +166,43 @@ Foo();
     }
 
     [Test]
+    public void Analyze_NestedFunctionContainsFunctionWithSameName_InspectionProduced()
+    {
+        var program = new Program
+        {
+            new FunctionDeclaration("Foo")
+            {
+                Body =
+                {
+                    new FunctionDeclaration("Foo")
+                    {
+                        Body =
+                        {
+                            new VariableDeclaration("b"),
+                            new AssignVariable("b"),
+                        }
+                    },
+                    new Invocation("Foo", true),
+                }
+            },
+            new Invocation("Foo", true),
+        };
+
+        ValidationHelper.ValidateResult(program, $@"
+func Foo {{
+    func Foo {{
+        var b;
+        b = smth;
+    }} {ValidationHelper.Error(s => new ConflictingIdentifierNameDescriptor(s, "Foo"))}
+
+    if (smth) Foo();
+}}
+
+if (smth) Foo();
+");
+    }
+
+    [Test]
     public void Analyze_SameDeclarationsInDifferentNestedContexts_NoInspections()
     {
         var program = new Program

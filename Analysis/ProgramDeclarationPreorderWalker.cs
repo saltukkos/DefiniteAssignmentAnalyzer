@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using LanguageModel;
 
@@ -20,8 +19,7 @@ public sealed class ProgramDeclarationPreorderWalker<TContext> : WalkerBase<TCon
         statement.Accept(visitor);
         if (visitor.SawNewDeclaration)
         {
-            var pushed = TryPushDeclarationToProcess(visitor.NewDeclaration, visitor.CurrentContext);
-            Debug.Assert(pushed, "Declarations analysis could not lead to a cycle. Is AST not actually a tree?");
+            TryPushDeclarationToProcess(visitor.NewDeclaration, visitor.CurrentContext);
         }
 
         return true;
