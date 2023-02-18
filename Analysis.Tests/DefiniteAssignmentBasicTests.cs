@@ -532,4 +532,46 @@ print(a); {ValidationHelper.Error(s => new UnassignedVariableUsageDescriptor(s, 
 ");
     }
 
+    [Test]
+    public void Analyze_InternalCallUnconditionalButExternalCallIsConditional_AllVariableAccessesAreAnalyzed()
+    {
+        var program = new Program
+        {
+            new VariableDeclaration("a"),
+            new VariableDeclaration("b"),
+            new FunctionDeclaration("Foo")
+            {
+                Body =
+                {
+                    new PrintVariable("a"),
+                    new Invocation("Bar", false),
+                    new PrintVariable("b"),
+                }
+            },
+            new FunctionDeclaration("Bar")
+            {
+                Body =
+                {
+                    new AssignVariable("b"),
+                }
+            },
+            new Invocation("Foo", true),
+        };
+
+        ValidationHelper.ValidateResult(program, $@"
+var a;
+var b;
+func Foo {{
+    print(a);
+    Bar();
+    print(b);
+}}
+
+func Bar {{
+    b = smth;
+}}
+
+if (smth) Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a")})}
+");
+    }
 }

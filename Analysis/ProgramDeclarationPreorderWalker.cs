@@ -8,10 +8,7 @@ public sealed class ProgramDeclarationPreorderWalker<TContext> : WalkerBase<TCon
 {
     private readonly IPreorderDeclarationsAnalyzer<TContext> _analyzer;
 
-    public ProgramDeclarationPreorderWalker(
-        IDeclarationScope declarationScope,
-        IPreorderDeclarationsAnalyzer<TContext> analyzer)
-        : base(declarationScope)
+    public ProgramDeclarationPreorderWalker(IPreorderDeclarationsAnalyzer<TContext> analyzer)
     {
         _analyzer = analyzer;
     }
@@ -35,10 +32,6 @@ public sealed class ProgramDeclarationPreorderWalker<TContext> : WalkerBase<TCon
         return _analyzer.CreateEmptyContext(declarationScope);
     }
 
-    protected override void OnDeclarationProcessingFinished(IDeclarationScope declarations, TContext context)
-    {
-    }
-    
     private sealed class StatementVisitor : IStatementVisitor
     {
         private readonly IPreorderDeclarationsAnalyzer<TContext> _declarationsAnalyzer;

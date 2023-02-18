@@ -5,11 +5,11 @@ namespace Analysis;
 
 public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<DefiniteAssignmentContext>
 {
-    private readonly IPostorderMethodStateAnalyzer<ParentAssignmentsContext> _assignmentsAnalyzer;
+    private readonly IProgramAnalyzer<ParentAssignmentsContext> _assignmentsAnalyzer;
     private readonly IInspectionDescriptorCollector _inspectionDescriptorCollector;
 
     public DefiniteAssignmentAnalyzer(
-        IPostorderMethodStateAnalyzer<ParentAssignmentsContext> assignmentsAnalyzer,
+        IProgramAnalyzer<ParentAssignmentsContext> assignmentsAnalyzer,
         IInspectionDescriptorCollector inspectionDescriptorCollector)
     {
         _assignmentsAnalyzer = assignmentsAnalyzer;

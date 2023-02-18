@@ -114,6 +114,38 @@ Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {ne
 ");
     }
 
+    [Test]
+    public void Analyze_FunctionCallsItselfUnconditionallyButExternalCallIsConditional_AllVariableAccessesAreAnalyzed()
+    {
+        var program = new Program
+        {
+            new VariableDeclaration("a"),
+            new VariableDeclaration("b"),
+            new FunctionDeclaration("Foo")
+            {
+                Body =
+                {
+                    new PrintVariable("a"),
+                    new Invocation("Foo", false),
+                    new PrintVariable("b"),
+                }
+            },
+            new Invocation("Foo", true),
+        };
+
+        ValidationHelper.ValidateResult(program, $@"
+var a;
+var b;
+func Foo {{
+    print(a);
+    Foo();
+    print(b);
+}}
+
+if (smth) Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a"), new(s, "b")})}
+");
+    }
+
     [Test(Description =
         "We can change this behaviour to be more consistent with non-self recursion calls with little tweaks if need")]
     public void Analyze_FunctionCallsItselfUnconditionally_LocalVariableAssignmentsAreIgnored()

@@ -10,32 +10,26 @@ public sealed class AnalysisRunner
         var inspectionsCollector = new InspectionDescriptorCollector();
         var programDeclarations = new DeclarationResolver(inspectionsCollector).Resolve(program);
 
-        var analyzerResultsStorage = new AnalyzerResultsStorage();
-        var invalidDeclarationsAnalyzer = new InvalidDeclarationsAnalyzer(inspectionsCollector);
-        var parentAssignmentAnalyzer = new ParentAssignmentAnalyzer();
-        var assignmentAnalyzer = new DefiniteAssignmentAnalyzer(parentAssignmentAnalyzer, inspectionsCollector);
+        var invalidDeclarationsAnalyzer = CreateAnalyzerRunner(new InvalidDeclarationsAnalyzer(inspectionsCollector));
+        var parentAssignmentAnalyzer = CreateAnalyzerRunner(new ParentAssignmentAnalyzer());
+        var assignmentAnalyzer =
+            CreateAnalyzerRunner(new DefiniteAssignmentAnalyzer(parentAssignmentAnalyzer, inspectionsCollector));
 
-        RunAnalyzer(invalidDeclarationsAnalyzer, programDeclarations);
-        RunAnalyzer(parentAssignmentAnalyzer, programDeclarations, analyzerResultsStorage);
-        RunAnalyzer(assignmentAnalyzer, programDeclarations, analyzerResultsStorage);
+        invalidDeclarationsAnalyzer.AnalyzeProgram(programDeclarations);
+        assignmentAnalyzer.AnalyzeProgram(programDeclarations);
 
         return inspectionsCollector.GetInspections();
     }
 
-    private static void RunAnalyzer<TContext>(IPostorderMethodStateAnalyzer<TContext> analyzer,
-        IDeclarationScope declarationScope, AnalyzerResultsStorage analyzerResultsStorage)
+    private static IProgramAnalyzer<TContext> CreateAnalyzerRunner<TContext>(
+        IPostorderMethodStateAnalyzer<TContext> analyzer)
     {
-        var runner =
-            new ProgramInvocationPostorderWalkerWithRecursionClipping<TContext>(declarationScope, analyzer,
-                analyzerResultsStorage);
-
-        runner.AnalyzeProgram();
+        return new ProgramInvocationPostorderWalkerWithRecursionClipping<TContext>(analyzer);
     }
 
-    private static void RunAnalyzer<TContext>(IPreorderDeclarationsAnalyzer<TContext> analyzer,
-        IDeclarationScope declarationScope)
+    private static IProgramAnalyzer<TContext> CreateAnalyzerRunner<TContext>(
+        IPreorderDeclarationsAnalyzer<TContext> analyzer)
     {
-        var runner = new ProgramDeclarationPreorderWalker<TContext>(declarationScope, analyzer);
-        runner.AnalyzeProgram();
+        return new ProgramDeclarationPreorderWalker<TContext>(analyzer);
     }
 }

@@ -5,18 +5,11 @@ namespace Analysis;
 public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TContext> : WalkerBase<TContext>
 {
     private readonly IPostorderMethodStateAnalyzer<TContext> _methodStateAnalyzer;
-    private readonly AnalyzerResultsStorage _analyzerResultsStorage;
-    private readonly Dictionary<IDeclarationScope, TContext> _builtContexts = new();
 
     public ProgramInvocationPostorderWalkerWithRecursionClipping(
-        IDeclarationScope declarationScope,
-        IPostorderMethodStateAnalyzer<TContext> methodStateAnalyzer,
-        AnalyzerResultsStorage analyzerResultsStorage) 
-        : base(declarationScope)
+        IPostorderMethodStateAnalyzer<TContext> methodStateAnalyzer) 
     {
         _methodStateAnalyzer = methodStateAnalyzer;
-        _analyzerResultsStorage = analyzerResultsStorage;
-        analyzerResultsStorage.RegisterResults(methodStateAnalyzer, _builtContexts);
     }
 
     protected override bool TryProcessStatement(
@@ -35,9 +28,9 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
             return true;
         }
 
-        if (_builtContexts.TryGetValue(declaration, out var builtContext))
+        if (BuiltContexts.TryGetValue(declaration, out var builtContext))
         {
-            var invokedMethodContextProvider = _analyzerResultsStorage.GetProviderFor(declaration);
+            var invokedMethodContextProvider = new InvokedMethodContextProvider(declaration);
             _methodStateAnalyzer.AnalyzeInvocation(context, invocation, builtContext, invokedMethodContextProvider);
             return true;
         }
@@ -45,7 +38,7 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
         var emptyContext = _methodStateAnalyzer.CreateEmptyContext(declaration);
         if (!TryPushDeclarationToProcess(declaration, emptyContext))
         {
-            var invokedMethodContextProvider = _analyzerResultsStorage.GetProviderFor(declaration);
+            var invokedMethodContextProvider = new InvokedMethodContextProvider(declaration);
             _methodStateAnalyzer.AnalyzeInvocation(context, invocation, emptyContext, invokedMethodContextProvider);
             return true;
         }
@@ -56,11 +49,6 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
     protected override TContext CreateContext(IDeclarationScope declarationScope)
     {
         return _methodStateAnalyzer.CreateEmptyContext(declarationScope);
-    }
-
-    protected override void OnDeclarationProcessingFinished(IDeclarationScope declarations, TContext context)
-    {
-        _builtContexts.Add(declarations, context);
     }
 
     private sealed class StatementVisitor : IStatementVisitor

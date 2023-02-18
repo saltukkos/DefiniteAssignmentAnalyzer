@@ -2,20 +2,25 @@ using LanguageModel;
 
 namespace Analysis;
 
-public abstract class WalkerBase<TContext>
+public abstract class WalkerBase<TContext> : IProgramAnalyzer<TContext>
 {
-    private readonly IDeclarationScope _declarationScope;
     private readonly UniqueElementsStack<AnalyzingStackFrame> _analyzingStack;
+    protected readonly Dictionary<IDeclarationScope, TContext> BuiltContexts = new();
 
-    protected WalkerBase(IDeclarationScope declarationScope)
+    protected WalkerBase()
     {
-        _declarationScope = declarationScope;
         _analyzingStack = new UniqueElementsStack<AnalyzingStackFrame>();
     }
 
-    public void AnalyzeProgram()
+    public TContext AnalyzeProgram(IDeclarationScope declarationScope)
     {
-        _analyzingStack.Push(new AnalyzingStackFrame(_declarationScope, CreateContext(_declarationScope)));
+        if (BuiltContexts.TryGetValue(declarationScope, out var builtContext))
+        {
+            return builtContext;
+        }
+        
+        var context = CreateContext(declarationScope);
+        _analyzingStack.Push(new AnalyzingStackFrame(declarationScope, context));
         while (_analyzingStack.TryPeek(out var stackFrame))
         {
             var program = stackFrame.Declaration.Program;
@@ -23,7 +28,7 @@ public abstract class WalkerBase<TContext>
             if (position == program.Count)
             {
                 _analyzingStack.Pop();
-                OnDeclarationProcessingFinished(stackFrame.Declaration, stackFrame.Context);
+                BuiltContexts[stackFrame.Declaration] = stackFrame.Context;
                 continue;
             }
 
@@ -33,6 +38,8 @@ public abstract class WalkerBase<TContext>
                 stackFrame.Position++;
             }
         }
+
+        return context;
     }
 
     protected bool TryPushDeclarationToProcess(IDeclarationScope declarations, TContext context)
@@ -45,8 +52,6 @@ public abstract class WalkerBase<TContext>
         IDeclarationScope declarations);
 
     protected abstract TContext CreateContext(IDeclarationScope declarationScope);
-
-    protected abstract void OnDeclarationProcessingFinished(IDeclarationScope declarations, TContext context);
 
     private sealed class AnalyzingStackFrame
     {
