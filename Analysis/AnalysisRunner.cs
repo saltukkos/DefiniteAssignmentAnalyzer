@@ -23,19 +23,19 @@ public sealed class AnalysisRunner
     }
 
     private static void RunAnalyzer<TContext>(IPostorderMethodStateAnalyzer<TContext> analyzer,
-        IProgramDeclarations programDeclarations, AnalyzerResultsStorage analyzerResultsStorage)
+        IDeclarationScope declarationScope, AnalyzerResultsStorage analyzerResultsStorage)
     {
         var runner =
-            new ProgramInvocationPostorderWalkerWithRecursionClipping<TContext>(programDeclarations, analyzer,
+            new ProgramInvocationPostorderWalkerWithRecursionClipping<TContext>(declarationScope, analyzer,
                 analyzerResultsStorage);
 
         runner.AnalyzeProgram();
     }
 
     private static void RunAnalyzer<TContext>(IPreorderDeclarationsAnalyzer<TContext> analyzer,
-        IProgramDeclarations programDeclarations)
+        IDeclarationScope declarationScope)
     {
-        var runner = new ProgramDeclarationPreorderWalker<TContext>(programDeclarations, analyzer);
+        var runner = new ProgramDeclarationPreorderWalker<TContext>(declarationScope, analyzer);
         runner.AnalyzeProgram();
     }
 }

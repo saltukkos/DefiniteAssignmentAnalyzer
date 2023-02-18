@@ -8,22 +8,22 @@ public sealed class AnalyzerResultsStorage
 
     public void RegisterResults<TContext>(
         IPostorderMethodStateAnalyzer<TContext> analyzer,
-        Dictionary<IProgramDeclarations, TContext> results)
+        Dictionary<IDeclarationScope, TContext> results)
     {
         _storages[analyzer] = results;
     }
 
-    public IInvokedMethodContextProvider GetProviderFor(IProgramDeclarations declarations)
+    public IInvokedMethodContextProvider GetProviderFor(IDeclarationScope declarations)
     {
         return new InvokedMethodContextProvider(declarations, _storages);
     }
 
     private sealed class InvokedMethodContextProvider : IInvokedMethodContextProvider
     {
-        private readonly IProgramDeclarations _declarations;
+        private readonly IDeclarationScope _declarations;
         private readonly Dictionary<object, IDictionary> _storages;
 
-        public InvokedMethodContextProvider(IProgramDeclarations declarations, Dictionary<object, IDictionary> storages)
+        public InvokedMethodContextProvider(IDeclarationScope declarations, Dictionary<object, IDictionary> storages)
         {
             _declarations = declarations;
             _storages = storages;
@@ -31,7 +31,7 @@ public sealed class AnalyzerResultsStorage
 
         public TContext GetContext<TContext>(IPostorderMethodStateAnalyzer<TContext> analyzer)
         {
-            var storage = (IReadOnlyDictionary<IProgramDeclarations, TContext>) _storages[analyzer];
+            var storage = (IReadOnlyDictionary<IDeclarationScope, TContext>) _storages[analyzer];
             return storage[_declarations];
         }
     }

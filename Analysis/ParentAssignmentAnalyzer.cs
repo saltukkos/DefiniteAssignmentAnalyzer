@@ -5,7 +5,7 @@ namespace Analysis;
 
 public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<ParentAssignmentsContext>
 {
-    public ParentAssignmentsContext CreateEmptyContext(IProgramDeclarations declarations) => new(declarations);
+    public ParentAssignmentsContext CreateEmptyContext(IDeclarationScope declarations) => new(declarations);
 
     public void AnalyzeAssignVariable(ParentAssignmentsContext context, AssignVariable statement)
     {
@@ -16,6 +16,8 @@ public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<Par
     {
     }
 
+    public bool NeedToProcessInvocation(Invocation invocation) => !invocation.IsConditional;
+
     public void AnalyzeInvocation(ParentAssignmentsContext context, Invocation invocation,
         ParentAssignmentsContext invokedMethodContext, IInvokedMethodContextProvider contextProvider)
     {
@@ -23,13 +25,10 @@ public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<Par
 
         foreach (var assignment in invokedMethodContext.ParentContextDefiniteAssignments)
         {
-            //TODO can reduce memory footprint using ImmutableHashSet
             AnaliseVariableAssignment(context, assignment);
         }
     }
 
-    public bool NeedToProcessInvocation(Invocation invocation) => !invocation.IsConditional;
-    
     private static void AnaliseVariableAssignment(ParentAssignmentsContext context, string variableName)
     {
         if (context.CurrentContextVariableDeclarations.Contains(variableName))
@@ -43,11 +42,18 @@ public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<Par
 
 public sealed class ParentAssignmentsContext
 {
-    public ParentAssignmentsContext(IProgramDeclarations declarations)
+    public ParentAssignmentsContext(IDeclarationScope declarations)
     {
         CurrentContextVariableDeclarations = declarations.CurrentContextVariables;
     }
 
     public IReadOnlySet<string> CurrentContextVariableDeclarations { get; }
+    
+    /*
+     * Unfortunately, ImmutableHashSet will be not so efficient in this scenario because we have to be able
+     * to merge data from multiple child contexts into one, but the Union operantion can't reuse internal structure
+     * of both sets.
+     * So we will not benefit as much in terms of memory footprint, and a regular HashSet would perform better here.
+    */
     public HashSet<string> ParentContextDefiniteAssignments { get; } = new();
 }

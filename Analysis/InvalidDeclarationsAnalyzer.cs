@@ -4,20 +4,6 @@ using LanguageModel;
 
 namespace Analysis;
 
-public sealed class DeclarationsContext
-{
-    public DeclarationsContext(IProgramDeclarations declarations, DeclarationsContext? parentContext = null)
-    {
-        Declarations = declarations;
-        DeclaredVariables = parentContext?.DeclaredVariables.ToImmutable().ToBuilder() ??
-                            ImmutableHashSet.CreateBuilder<string>();
-    }
-
-    public IProgramDeclarations Declarations { get; }
-
-    public ImmutableHashSet<string>.Builder DeclaredVariables { get; }
-}
-
 public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<DeclarationsContext>
 {
     private readonly IInspectionDescriptorCollector _inspectionDescriptorCollector;
@@ -27,9 +13,9 @@ public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<
         _inspectionDescriptorCollector = inspectionDescriptorCollector;
     }
     
-    public DeclarationsContext CreateEmptyContext(IProgramDeclarations declarations) => new(declarations);
+    public DeclarationsContext CreateEmptyContext(IDeclarationScope declarations) => new(declarations);
 
-    public DeclarationsContext CreateChildContext(DeclarationsContext context, IProgramDeclarations nestedDeclarations)
+    public DeclarationsContext CreateChildContext(DeclarationsContext context, IDeclarationScope nestedDeclarations)
     {
         return new DeclarationsContext(nestedDeclarations, context);
     }
@@ -48,7 +34,7 @@ public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<
          * Handle this case after variable name conflicts, because we still want to save varible declaration
          * to produce less irrelevant inspections in case of variable\function name conflict.
         */
-        if (context.Declarations.AllAvailableDeclarations.ContainsKey(variableName))
+        if (context.Declarations.AllAvailableFunctionDeclarations.ContainsKey(variableName))
         {
             _inspectionDescriptorCollector
                 .ReportInspection(new ConflictingIdentifierNameDescriptor(declaration, variableName));
@@ -67,7 +53,7 @@ public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<
 
     public void AnalyzeInvocation(DeclarationsContext context, Invocation invocation)
     {
-        if (!context.Declarations.AllAvailableDeclarations.ContainsKey(invocation.FunctionName))
+        if (!context.Declarations.AllAvailableFunctionDeclarations.ContainsKey(invocation.FunctionName))
         {
             _inspectionDescriptorCollector
                 .ReportInspection(new UnknownFunctionDescriptor(invocation, invocation.FunctionName));
@@ -82,4 +68,18 @@ public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<
                 .ReportInspection(new UnknownVariableDescriptor(statement, variableName));
         }
     }
+}
+
+public sealed class DeclarationsContext
+{
+    public DeclarationsContext(IDeclarationScope declarations, DeclarationsContext? parentContext = null)
+    {
+        Declarations = declarations;
+        DeclaredVariables = parentContext?.DeclaredVariables.ToImmutable().ToBuilder() ??
+                            ImmutableHashSet.CreateBuilder<string>();
+    }
+
+    public IDeclarationScope Declarations { get; }
+
+    public ImmutableHashSet<string>.Builder DeclaredVariables { get; }
 }

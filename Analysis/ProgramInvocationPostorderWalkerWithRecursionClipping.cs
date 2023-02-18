@@ -6,13 +6,13 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
 {
     private readonly IPostorderMethodStateAnalyzer<TContext> _methodStateAnalyzer;
     private readonly AnalyzerResultsStorage _analyzerResultsStorage;
-    private readonly Dictionary<IProgramDeclarations, TContext> _builtContexts = new();
+    private readonly Dictionary<IDeclarationScope, TContext> _builtContexts = new();
 
     public ProgramInvocationPostorderWalkerWithRecursionClipping(
-        IProgramDeclarations programDeclarations,
+        IDeclarationScope declarationScope,
         IPostorderMethodStateAnalyzer<TContext> methodStateAnalyzer,
         AnalyzerResultsStorage analyzerResultsStorage) 
-        : base(programDeclarations)
+        : base(declarationScope)
     {
         _methodStateAnalyzer = methodStateAnalyzer;
         _analyzerResultsStorage = analyzerResultsStorage;
@@ -20,7 +20,7 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
     }
 
     protected override bool TryProcessStatement(
-        IStatement statement, TContext context, IProgramDeclarations declarations)
+        IStatement statement, TContext context, IDeclarationScope declarations)
     {
         if (statement is not Invocation invocation)
         {
@@ -30,7 +30,7 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
         }
         
         if (!_methodStateAnalyzer.NeedToProcessInvocation(invocation) ||
-            !declarations.AllAvailableDeclarations.TryGetValue(invocation.FunctionName, out var declaration))
+            !declarations.AllAvailableFunctionDeclarations.TryGetValue(invocation.FunctionName, out var declaration))
         {
             return true;
         }
@@ -53,12 +53,12 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
         return false;
     }
 
-    protected override TContext CreateContext(IProgramDeclarations programDeclarations)
+    protected override TContext CreateContext(IDeclarationScope declarationScope)
     {
-        return _methodStateAnalyzer.CreateEmptyContext(programDeclarations);
+        return _methodStateAnalyzer.CreateEmptyContext(declarationScope);
     }
 
-    protected override void OnDeclarationProcessingFinished(IProgramDeclarations declarations, TContext context)
+    protected override void OnDeclarationProcessingFinished(IDeclarationScope declarations, TContext context)
     {
         _builtContexts.Add(declarations, context);
     }

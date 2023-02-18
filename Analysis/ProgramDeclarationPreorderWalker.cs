@@ -6,47 +6,47 @@ namespace Analysis;
 
 public sealed class ProgramDeclarationPreorderWalker<TContext> : WalkerBase<TContext>
 {
-    private readonly IPreorderDeclarationsAnalyzer<TContext> _methodStateAnalyzer;
+    private readonly IPreorderDeclarationsAnalyzer<TContext> _analyzer;
 
     public ProgramDeclarationPreorderWalker(
-        IProgramDeclarations programDeclarations,
-        IPreorderDeclarationsAnalyzer<TContext> methodStateAnalyzer)
-        : base(programDeclarations)
+        IDeclarationScope declarationScope,
+        IPreorderDeclarationsAnalyzer<TContext> analyzer)
+        : base(declarationScope)
     {
-        _methodStateAnalyzer = methodStateAnalyzer;
+        _analyzer = analyzer;
     }
 
     protected override bool TryProcessStatement(
-        IStatement statement, TContext context, IProgramDeclarations declarations)
+        IStatement statement, TContext context, IDeclarationScope declarations)
     {
-        var visitor = new StatementVisitor(_methodStateAnalyzer, declarations, context);
+        var visitor = new StatementVisitor(_analyzer, declarations, context);
         statement.Accept(visitor);
         if (visitor.SawNewDeclaration)
         {
             var pushed = TryPushDeclarationToProcess(visitor.NewDeclaration, visitor.CurrentContext);
-            Debug.Assert(pushed, "Declarations analysis could not lead to cycle. Is AST not actually a tree?");
+            Debug.Assert(pushed, "Declarations analysis could not lead to a cycle. Is AST not actually a tree?");
         }
 
         return true;
     }
 
-    protected override TContext CreateContext(IProgramDeclarations programDeclarations)
+    protected override TContext CreateContext(IDeclarationScope declarationScope)
     {
-        return _methodStateAnalyzer.CreateEmptyContext(programDeclarations);
+        return _analyzer.CreateEmptyContext(declarationScope);
     }
 
-    protected override void OnDeclarationProcessingFinished(IProgramDeclarations declarations, TContext context)
+    protected override void OnDeclarationProcessingFinished(IDeclarationScope declarations, TContext context)
     {
     }
     
     private sealed class StatementVisitor : IStatementVisitor
     {
         private readonly IPreorderDeclarationsAnalyzer<TContext> _declarationsAnalyzer;
-        private readonly IProgramDeclarations _declarations;
+        private readonly IDeclarationScope _declarations;
 
         public StatementVisitor(
             IPreorderDeclarationsAnalyzer<TContext> declarationsAnalyzer,
-            IProgramDeclarations declarations,
+            IDeclarationScope declarations,
             TContext currentContext)
         {
             _declarationsAnalyzer = declarationsAnalyzer;
@@ -59,7 +59,7 @@ public sealed class ProgramDeclarationPreorderWalker<TContext> : WalkerBase<TCon
         [MemberNotNullWhen(true, nameof(NewDeclaration))]
         public bool SawNewDeclaration { get; private set; }
         
-        public IProgramDeclarations? NewDeclaration { get; private set; }
+        public IDeclarationScope? NewDeclaration { get; private set; }
 
         public void VisitInvocation(Invocation statement)
         {
@@ -83,7 +83,8 @@ public sealed class ProgramDeclarationPreorderWalker<TContext> : WalkerBase<TCon
 
         public void VisitFunctionDeclaration(FunctionDeclaration statement)
         {
-            if (!_declarations.AllAvailableDeclarations.TryGetValue(statement.FunctionName, out var nestedDeclarations))
+            var declarations = _declarations.AllAvailableFunctionDeclarations;
+            if (!declarations.TryGetValue(statement.FunctionName, out var nestedDeclarations))
             {
                 return;
             }

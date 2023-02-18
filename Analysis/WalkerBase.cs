@@ -4,18 +4,18 @@ namespace Analysis;
 
 public abstract class WalkerBase<TContext>
 {
-    private readonly IProgramDeclarations _programDeclarations;
+    private readonly IDeclarationScope _declarationScope;
     private readonly UniqueElementsStack<AnalyzingStackFrame> _analyzingStack;
 
-    protected WalkerBase(IProgramDeclarations programDeclarations)
+    protected WalkerBase(IDeclarationScope declarationScope)
     {
-        _programDeclarations = programDeclarations;
+        _declarationScope = declarationScope;
         _analyzingStack = new UniqueElementsStack<AnalyzingStackFrame>();
     }
 
     public void AnalyzeProgram()
     {
-        _analyzingStack.Push(new AnalyzingStackFrame(_programDeclarations, CreateContext(_programDeclarations)));
+        _analyzingStack.Push(new AnalyzingStackFrame(_declarationScope, CreateContext(_declarationScope)));
         while (_analyzingStack.TryPeek(out var stackFrame))
         {
             var program = stackFrame.Declaration.Program;
@@ -35,29 +35,29 @@ public abstract class WalkerBase<TContext>
         }
     }
 
-    protected bool TryPushDeclarationToProcess(IProgramDeclarations declarations, TContext context)
+    protected bool TryPushDeclarationToProcess(IDeclarationScope declarations, TContext context)
     {
         var nextFrame = new AnalyzingStackFrame(declarations, context);
         return _analyzingStack.TryPush(nextFrame);
     }
 
     protected abstract bool TryProcessStatement(IStatement statement, TContext context,
-        IProgramDeclarations declarations);
+        IDeclarationScope declarations);
 
-    protected abstract TContext CreateContext(IProgramDeclarations programDeclarations);
+    protected abstract TContext CreateContext(IDeclarationScope declarationScope);
 
-    protected abstract void OnDeclarationProcessingFinished(IProgramDeclarations declarations, TContext context);
+    protected abstract void OnDeclarationProcessingFinished(IDeclarationScope declarations, TContext context);
 
     private sealed class AnalyzingStackFrame
     {
-        public AnalyzingStackFrame(IProgramDeclarations declaration, TContext context)
+        public AnalyzingStackFrame(IDeclarationScope declaration, TContext context)
         {
             Declaration = declaration;
             Context = context;
             Position = 0;
         }
 
-        public IProgramDeclarations Declaration { get; }
+        public IDeclarationScope Declaration { get; }
         public int Position { get; set; }
         public TContext Context { get; }
 

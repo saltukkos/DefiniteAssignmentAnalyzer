@@ -4,7 +4,7 @@ namespace Analysis;
 
 public interface IPostorderMethodStateAnalyzer<TContext>
 {
-    TContext CreateEmptyContext(IProgramDeclarations declarations);
+    TContext CreateEmptyContext(IDeclarationScope declarations);
 
     void AnalyzeAssignVariable(TContext context, AssignVariable statement);
 

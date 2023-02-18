@@ -2,11 +2,11 @@ using LanguageModel;
 
 namespace Analysis;
 
-public interface IProgramDeclarations
+public interface IDeclarationScope
 {
     Program Program { get; }
 
-    IReadOnlyDictionary<string, IProgramDeclarations> AllAvailableDeclarations { get; }
+    IReadOnlyDictionary<string, IDeclarationScope> AllAvailableFunctionDeclarations { get; }
 
     IReadOnlySet<string> CurrentContextVariables { get; }
 }

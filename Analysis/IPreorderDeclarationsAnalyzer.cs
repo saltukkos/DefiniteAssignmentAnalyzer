@@ -4,9 +4,9 @@ namespace Analysis;
 
 public interface IPreorderDeclarationsAnalyzer<TContext>
 {
-    TContext CreateEmptyContext(IProgramDeclarations declarations);
+    TContext CreateEmptyContext(IDeclarationScope declarations);
 
-    TContext CreateChildContext(TContext context, IProgramDeclarations functionNestedDeclarations);
+    TContext CreateChildContext(TContext context, IDeclarationScope nestedDeclarations);
 
     void AnalyzeVariableDeclaration(TContext context, VariableDeclaration declaration);
 

@@ -13,33 +13,32 @@ public sealed class DeclarationResolver
         _inspectionDescriptorCollector = inspectionDescriptorCollector;
     }
 
-    public IProgramDeclarations Resolve(Program rootProgram)
+    public IDeclarationScope Resolve(Program rootProgram)
     {
-        var programsToVisit = new Queue<ProgramDeclarations>();
-        var rootDeclarations = new ProgramDeclarations(rootProgram, null);
+        var programsToVisit = new Queue<DeclarationScope>();
+        var rootDeclarations = new DeclarationScope(rootProgram, null);
         programsToVisit.Enqueue(rootDeclarations);
 
-        while (programsToVisit.TryDequeue(out var currentDeclaration))
+        while (programsToVisit.TryDequeue(out var currentScope))
         {
-            AnalyzeSubProgram(currentDeclaration, programsToVisit);
+            AnalyzeSubProgram(currentScope, programsToVisit);
         }
 
         return rootDeclarations;
     }
 
-    private void AnalyzeSubProgram(
-        ProgramDeclarations currentDeclaration,
-        Queue<ProgramDeclarations> programsToVisit)
+    private void AnalyzeSubProgram(DeclarationScope currentScope, Queue<DeclarationScope> programsToVisit)
     {
-        var parentDeclarations = currentDeclaration.ParentDeclarations?.AllAvailableDeclarationsInternal ??
-                                 ImmutableDictionary<string, IProgramDeclarations>.Empty;
+        var parentDeclarations = currentScope.ParentScope?.AllAvailableFunctionDeclarationsInternal ??
+                                 ImmutableDictionary<string, IDeclarationScope>.Empty;
 
         var availableDeclarationsBuilder = parentDeclarations.ToBuilder();
-        foreach (var statement in currentDeclaration.Program)
+        foreach (var statement in currentScope.Program)
         {
             if (statement is VariableDeclaration variableDeclaration)
             {
-                currentDeclaration.CurrentContextVariablesInternal.Add(variableDeclaration.VariableName);
+                currentScope.CurrentContextVariablesInternal.Add(variableDeclaration.VariableName);
+                continue;
             }
             
             if (statement is not FunctionDeclaration functionDeclaration)
@@ -56,33 +55,33 @@ public sealed class DeclarationResolver
                 continue;
             }
 
-            var childDeclarations = new ProgramDeclarations(functionDeclaration.Body, currentDeclaration);
+            var childDeclarations = new DeclarationScope(functionDeclaration.Body, currentScope);
             availableDeclarationsBuilder.Add(functionName, childDeclarations);
             programsToVisit.Enqueue(childDeclarations);
         }
 
-        currentDeclaration.AllAvailableDeclarationsInternal = availableDeclarationsBuilder.ToImmutable();
+        currentScope.AllAvailableFunctionDeclarationsInternal = availableDeclarationsBuilder.ToImmutable();
     }
     
-    private sealed class ProgramDeclarations : IProgramDeclarations
+    private sealed class DeclarationScope : IDeclarationScope
     {
-        public ProgramDeclarations(Program program, ProgramDeclarations? parentDeclarations)
+        public DeclarationScope(Program program, DeclarationScope? parentScope)
         {
             Program = program;
-            ParentDeclarations = parentDeclarations;
-            AllAvailableDeclarationsInternal = ImmutableDictionary<string, IProgramDeclarations>.Empty;
+            ParentScope = parentScope;
+            AllAvailableFunctionDeclarationsInternal = ImmutableDictionary<string, IDeclarationScope>.Empty;
         }
 
         public Program Program { get; }
 
-        public ProgramDeclarations? ParentDeclarations { get; }
+        public DeclarationScope? ParentScope { get; }
 
-        internal ImmutableDictionary<string, IProgramDeclarations> AllAvailableDeclarationsInternal { get; set; }
+        internal ImmutableDictionary<string, IDeclarationScope> AllAvailableFunctionDeclarationsInternal { get; set; }
 
         internal HashSet<string> CurrentContextVariablesInternal { get; } = new();
 
-        public IReadOnlyDictionary<string, IProgramDeclarations> AllAvailableDeclarations =>
-            AllAvailableDeclarationsInternal;
+        public IReadOnlyDictionary<string, IDeclarationScope> AllAvailableFunctionDeclarations =>
+            AllAvailableFunctionDeclarationsInternal;
         
         public IReadOnlySet<string> CurrentContextVariables => CurrentContextVariablesInternal;
     }

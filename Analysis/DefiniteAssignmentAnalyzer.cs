@@ -16,7 +16,7 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
         _inspectionDescriptorCollector = inspectionDescriptorCollector;
     }
 
-    public DefiniteAssignmentContext CreateEmptyContext(IProgramDeclarations declarations) => new(declarations);
+    public DefiniteAssignmentContext CreateEmptyContext(IDeclarationScope declarations) => new(declarations);
 
     public void AnalyzeAssignVariable(DefiniteAssignmentContext context, AssignVariable statement)
     {
@@ -50,7 +50,8 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
 
     private void AnalyzeVariableAccess(DefiniteAssignmentContext context, string variableName, IStatement statement)
     {
-        // We will consider all accessed variables as assigned after the statement to avoid producing same inspections
+        // We will consider all accessed variables as being assigned after the statement to avoid producing
+        // duplicate inspections
         if (!context.CurrentContextAssignments.Add(variableName))
         {
             return;
@@ -70,9 +71,9 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
 
 public sealed class DefiniteAssignmentContext
 {
-    public DefiniteAssignmentContext(IProgramDeclarations programDeclarations)
+    public DefiniteAssignmentContext(IDeclarationScope declarationScope)
     {
-        CurrentContextVariableDeclarations = programDeclarations.CurrentContextVariables;
+        CurrentContextVariableDeclarations = declarationScope.CurrentContextVariables;
     }
 
     public IReadOnlySet<string> CurrentContextVariableDeclarations { get; }
