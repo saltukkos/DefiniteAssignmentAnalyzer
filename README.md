@@ -45,15 +45,15 @@
 ```
 var a;
 var b;
-func Foo {{
+func Foo {
     if (smth) Bar();
     print(a);
-}}
+}
 
-func Bar {{
+func Bar {
     if (smth) Foo();
     print(b);
-}}
+}
 
 Foo(); // use of unassigned "a" and "b"
 Bar(); // use of unassigned "b" but not "a"?

@@ -28,7 +28,7 @@ public sealed class UniqueElementsStack<T> where T : notnull
     {
         var element = _stack.Pop();
         var removed = _existingElements.Remove(element);
-        Debug.Assert(removed, "Can't delete index for existing element");
+        Debug.Assert(removed, "Can't delete existing element");
         return element;
     }
 
