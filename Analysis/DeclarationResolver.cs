@@ -16,7 +16,8 @@ public sealed class DeclarationResolver
     public IDeclarationScope Resolve(Program rootProgram)
     {
         var programsToVisit = new Queue<DeclarationScope>();
-        var rootDeclarations = new DeclarationScope(rootProgram, null);
+        var rootDeclarations =
+            new DeclarationScope(rootProgram, null, ImmutableDictionary<string, VariableDeclaration>.Empty);
         programsToVisit.Enqueue(rootDeclarations);
 
         while (programsToVisit.TryDequeue(out var currentScope))
@@ -29,15 +30,27 @@ public sealed class DeclarationResolver
 
     private void AnalyzeSubProgram(DeclarationScope currentScope, Queue<DeclarationScope> programsToVisit)
     {
-        var parentDeclarations = currentScope.ParentScope?.AllAvailableFunctionDeclarationsInternal ??
+        var parentFunctionDeclarations = currentScope.ParentScope?.AllAvailableFunctionDeclarationsInternal ??
                                  ImmutableDictionary<string, IDeclarationScope>.Empty;
 
-        var availableDeclarationsBuilder = parentDeclarations.ToBuilder();
+        var availableFunctionDeclarationsBuilder = parentFunctionDeclarations.ToBuilder();
+        var availableVariablesDeclarationsBuilder = currentScope.AllAvailableVariableDeclarationsInternal.ToBuilder();
         foreach (var statement in currentScope.Program)
         {
             if (statement is VariableDeclaration variableDeclaration)
             {
-                currentScope.CurrentContextVariablesInternal.Add(variableDeclaration.VariableName);
+                currentScope.CurrentContextVariablesInternal.Add(variableDeclaration);
+                var variableName = variableDeclaration.VariableName;
+                if (availableVariablesDeclarationsBuilder.ContainsKey(variableName))
+                {
+                    _inspectionDescriptorCollector.ReportInspection(
+                        new ConflictingIdentifierNameDescriptor(variableDeclaration, variableName));
+                }
+                else
+                {
+                    availableVariablesDeclarationsBuilder.Add(variableName, variableDeclaration);   
+                }
+
                 continue;
             }
             
@@ -47,7 +60,7 @@ public sealed class DeclarationResolver
             }
 
             var functionName = functionDeclaration.FunctionName;
-            if (availableDeclarationsBuilder.ContainsKey(functionName))
+            if (availableFunctionDeclarationsBuilder.ContainsKey(functionName))
             {
                 _inspectionDescriptorCollector.ReportInspection(
                     new ConflictingIdentifierNameDescriptor(functionDeclaration, functionDeclaration.FunctionName));
@@ -55,34 +68,41 @@ public sealed class DeclarationResolver
                 continue;
             }
 
-            var childDeclarations = new DeclarationScope(functionDeclaration.Body, currentScope);
-            availableDeclarationsBuilder.Add(functionName, childDeclarations);
+            var childDeclarations = new DeclarationScope(functionDeclaration.Body, currentScope,
+                availableVariablesDeclarationsBuilder.ToImmutable());
+
+            availableFunctionDeclarationsBuilder.Add(functionName, childDeclarations);
             programsToVisit.Enqueue(childDeclarations);
         }
 
-        currentScope.AllAvailableFunctionDeclarationsInternal = availableDeclarationsBuilder.ToImmutable();
+        currentScope.AllAvailableFunctionDeclarationsInternal = availableFunctionDeclarationsBuilder.ToImmutable();
+        currentScope.AllAvailableVariableDeclarationsInternal = availableVariablesDeclarationsBuilder.ToImmutable();
     }
     
     private sealed class DeclarationScope : IDeclarationScope
     {
-        public DeclarationScope(Program program, DeclarationScope? parentScope)
+        public DeclarationScope(Program program, DeclarationScope? parentScope,
+            ImmutableDictionary<string, VariableDeclaration> allVariableDeclarations)
         {
             Program = program;
             ParentScope = parentScope;
+            AllAvailableVariableDeclarationsInternal = allVariableDeclarations;
             AllAvailableFunctionDeclarationsInternal = ImmutableDictionary<string, IDeclarationScope>.Empty;
         }
 
         public Program Program { get; }
-
         public DeclarationScope? ParentScope { get; }
 
         internal ImmutableDictionary<string, IDeclarationScope> AllAvailableFunctionDeclarationsInternal { get; set; }
-
-        internal HashSet<string> CurrentContextVariablesInternal { get; } = new();
+        internal ImmutableDictionary<string, VariableDeclaration> AllAvailableVariableDeclarationsInternal { get; set; }
+        internal HashSet<VariableDeclaration> CurrentContextVariablesInternal { get; } = new();
 
         public IReadOnlyDictionary<string, IDeclarationScope> AllAvailableFunctionDeclarations =>
             AllAvailableFunctionDeclarationsInternal;
-        
-        public IReadOnlySet<string> CurrentContextVariables => CurrentContextVariablesInternal;
+
+        public IReadOnlyDictionary<string, VariableDeclaration> AllAvailableVariableDeclarations =>
+            AllAvailableVariableDeclarationsInternal;
+
+        public IReadOnlySet<VariableDeclaration> CurrentContextVariableDeclarations => CurrentContextVariablesInternal;
     }
 }

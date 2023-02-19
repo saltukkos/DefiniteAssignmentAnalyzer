@@ -20,12 +20,18 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
 
     public void AnalyzeAssignVariable(DefiniteAssignmentContext context, AssignVariable statement)
     {
-        context.CurrentContextAssignments.Add(statement.VariableName);
+        if (context.AllAvailableVariableDeclarations.TryGetValue(statement.VariableName, out var declaration))
+        {
+            context.CurrentContextAssignments.Add(declaration);
+        }
     }
 
     public void AnalyzePrintVariable(DefiniteAssignmentContext context, PrintVariable statement)
     {
-        AnalyzeVariableAccess(context, statement.VariableName, statement);
+        if (context.AllAvailableVariableDeclarations.TryGetValue(statement.VariableName, out var declaration))
+        {
+            AnalyzeVariableAccess(context, declaration, statement);
+        }
     }
 
     public bool NeedToProcessInvocation(Invocation invocation) => true;
@@ -48,23 +54,24 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
         }
     }
 
-    private void AnalyzeVariableAccess(DefiniteAssignmentContext context, string variableName, IStatement statement)
+    private void AnalyzeVariableAccess(
+        DefiniteAssignmentContext context, VariableDeclaration variable, IStatement statement)
     {
         // We will consider all accessed variables as being assigned after the statement to avoid producing
         // duplicate inspections
-        if (!context.CurrentContextAssignments.Add(variableName))
+        if (!context.CurrentContextAssignments.Add(variable))
         {
             return;
         }
 
-        if (context.CurrentContextVariableDeclarations.Contains(variableName))
+        if (context.CurrentContextVariableDeclarations.Contains(variable))
         {
             _inspectionDescriptorCollector.ReportInspection(
-                new UnassignedVariableUsageDescriptor(statement, variableName));
+                new UnassignedVariableUsageDescriptor(statement, variable.VariableName));
         }
         else
         {
-            context.ParentContextAssignDependencies.Add(variableName);
+            context.ParentContextAssignDependencies.Add(variable);
         }
     }
 }
@@ -73,10 +80,12 @@ public sealed class DefiniteAssignmentContext
 {
     public DefiniteAssignmentContext(IDeclarationScope declarationScope)
     {
-        CurrentContextVariableDeclarations = declarationScope.CurrentContextVariables;
+        CurrentContextVariableDeclarations = declarationScope.CurrentContextVariableDeclarations;
+        AllAvailableVariableDeclarations = declarationScope.AllAvailableVariableDeclarations;
     }
 
-    public IReadOnlySet<string> CurrentContextVariableDeclarations { get; }
-    public HashSet<string> CurrentContextAssignments { get; } = new();
-    public HashSet<string> ParentContextAssignDependencies { get; } = new();
+    public IReadOnlyDictionary<string,VariableDeclaration> AllAvailableVariableDeclarations { get; }
+    public IReadOnlySet<VariableDeclaration> CurrentContextVariableDeclarations { get; }
+    public HashSet<VariableDeclaration> CurrentContextAssignments { get; } = new();
+    public HashSet<VariableDeclaration> ParentContextAssignDependencies { get; } = new();
 }

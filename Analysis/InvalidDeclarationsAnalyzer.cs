@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Analysis.InspectionDescriptors;
 using LanguageModel;
 
@@ -17,24 +16,13 @@ public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<
 
     public DeclarationsContext CreateChildContext(DeclarationsContext context, IDeclarationScope nestedDeclarations)
     {
-        return new DeclarationsContext(nestedDeclarations, context);
+        return new DeclarationsContext(nestedDeclarations);
     }
 
     public void AnalyzeVariableDeclaration(DeclarationsContext context, VariableDeclaration declaration)
     {
         var variableName = declaration.VariableName;
-        if (!context.DeclaredVariables.Add(variableName))
-        {
-            _inspectionDescriptorCollector
-                .ReportInspection(new ConflictingIdentifierNameDescriptor(declaration, variableName));
-            return;
-        }
-
-        /*
-         * Handle this case after variable name conflicts, because we still want to save varible declaration
-         * to produce less irrelevant inspections in case of variable\function name conflict.
-        */
-        if (context.Declarations.AllAvailableFunctionDeclarations.ContainsKey(variableName))
+        if (context.AllAvailableFunctionDeclarations.ContainsKey(variableName))
         {
             _inspectionDescriptorCollector
                 .ReportInspection(new ConflictingIdentifierNameDescriptor(declaration, variableName));
@@ -53,7 +41,7 @@ public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<
 
     public void AnalyzeInvocation(DeclarationsContext context, Invocation invocation)
     {
-        if (!context.Declarations.AllAvailableFunctionDeclarations.ContainsKey(invocation.FunctionName))
+        if (!context.AllAvailableFunctionDeclarations.ContainsKey(invocation.FunctionName))
         {
             _inspectionDescriptorCollector
                 .ReportInspection(new UnknownFunctionDescriptor(invocation, invocation.FunctionName));
@@ -62,7 +50,7 @@ public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<
 
     private void AnalyzeVariableAccess(DeclarationsContext context, IStatement statement, string variableName)
     {
-        if (!context.DeclaredVariables.Contains(variableName))
+        if (!context.AllAvailableVariableDeclarations.ContainsKey(variableName))
         {
             _inspectionDescriptorCollector
                 .ReportInspection(new UnknownVariableDescriptor(statement, variableName));
@@ -72,14 +60,13 @@ public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<
 
 public sealed class DeclarationsContext
 {
-    public DeclarationsContext(IDeclarationScope declarations, DeclarationsContext? parentContext = null)
+    public DeclarationsContext(IDeclarationScope declarations)
     {
-        Declarations = declarations;
-        DeclaredVariables = parentContext?.DeclaredVariables.ToImmutable().ToBuilder() ??
-                            ImmutableHashSet.CreateBuilder<string>();
+        AllAvailableFunctionDeclarations = declarations.AllAvailableFunctionDeclarations;
+        AllAvailableVariableDeclarations = declarations.AllAvailableVariableDeclarations;
     }
 
-    public IDeclarationScope Declarations { get; }
+    public IReadOnlyDictionary<string,VariableDeclaration> AllAvailableVariableDeclarations { get; }
 
-    public ImmutableHashSet<string>.Builder DeclaredVariables { get; }
+    public IReadOnlyDictionary<string,IDeclarationScope> AllAvailableFunctionDeclarations { get; }
 }

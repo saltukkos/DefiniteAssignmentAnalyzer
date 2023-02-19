@@ -146,9 +146,8 @@ if (smth) Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescri
 ");
     }
 
-    [Test(Description =
-        "We can change this behaviour to be more consistent with non-self recursion calls with little tweaks if need")]
-    public void Analyze_FunctionCallsItselfUnconditionally_LocalVariableAssignmentsAreIgnored()
+    [Test]
+    public void Analyze_FunctionCallsItselfUnconditionally_LocalVariableAssignmentsAreConsideredAfterTheCall()
     {
         var program = new Program
         {
@@ -174,7 +173,7 @@ func Foo {{
     var b;
     print(a); {ValidationHelper.Error(s => new UnassignedVariableUsageDescriptor(s, "a"))}
     Foo();
-    print(b); {ValidationHelper.Error(s => new UnassignedVariableUsageDescriptor(s, "b"))}
+    print(b);
     a = smth;
     b = smth;
 }}

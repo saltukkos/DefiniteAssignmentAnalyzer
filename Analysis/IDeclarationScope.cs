@@ -8,5 +8,7 @@ public interface IDeclarationScope
 
     IReadOnlyDictionary<string, IDeclarationScope> AllAvailableFunctionDeclarations { get; }
 
-    IReadOnlySet<string> CurrentContextVariables { get; }
+    IReadOnlyDictionary<string, VariableDeclaration> AllAvailableVariableDeclarations { get; }
+
+    IReadOnlySet<VariableDeclaration> CurrentContextVariableDeclarations { get; }
 }

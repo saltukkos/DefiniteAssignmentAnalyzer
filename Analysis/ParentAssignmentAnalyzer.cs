@@ -9,7 +9,10 @@ public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<Par
 
     public void AnalyzeAssignVariable(ParentAssignmentsContext context, AssignVariable statement)
     {
-        AnaliseVariableAssignment(context, statement.VariableName);
+        if (context.AllAvailableVariableDeclarations.TryGetValue(statement.VariableName, out var declaration))
+        {
+            context.ParentContextDefiniteAssignments.Add(declaration);
+        }
     }
 
     public void AnalyzePrintVariable(ParentAssignmentsContext context, PrintVariable statement)
@@ -25,18 +28,8 @@ public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<Par
 
         foreach (var assignment in invokedMethodContext.ParentContextDefiniteAssignments)
         {
-            AnaliseVariableAssignment(context, assignment);
+            context.ParentContextDefiniteAssignments.Add(assignment);
         }
-    }
-
-    private static void AnaliseVariableAssignment(ParentAssignmentsContext context, string variableName)
-    {
-        if (context.CurrentContextVariableDeclarations.Contains(variableName))
-        {
-            return;
-        }
-
-        context.ParentContextDefiniteAssignments.Add(variableName);
     }
 }
 
@@ -44,10 +37,10 @@ public sealed class ParentAssignmentsContext
 {
     public ParentAssignmentsContext(IDeclarationScope declarations)
     {
-        CurrentContextVariableDeclarations = declarations.CurrentContextVariables;
+        AllAvailableVariableDeclarations = declarations.AllAvailableVariableDeclarations;
     }
 
-    public IReadOnlySet<string> CurrentContextVariableDeclarations { get; }
+    public IReadOnlyDictionary<string, VariableDeclaration> AllAvailableVariableDeclarations { get; }
     
     /*
      * Unfortunately, ImmutableHashSet will be not so efficient in this scenario because we have to be able
@@ -55,5 +48,5 @@ public sealed class ParentAssignmentsContext
      * of both sets.
      * So we will not benefit as much in terms of memory footprint, and a regular HashSet would perform better here.
     */
-    public HashSet<string> ParentContextDefiniteAssignments { get; } = new();
+    public HashSet<VariableDeclaration> ParentContextDefiniteAssignments { get; } = new();
 }

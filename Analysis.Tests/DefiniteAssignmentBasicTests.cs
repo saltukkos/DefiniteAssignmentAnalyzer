@@ -574,4 +574,49 @@ func Bar {{
 if (smth) Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a")})}
 ");
     }
+
+    [Test]
+    public void Analyze_CalledFunctionHasVariableWithSameNameBufFromOtherContext_VariablesTreatedDifferently()
+    {
+        var program = new Program
+        {
+            new FunctionDeclaration("Foo")
+            {
+                Body =
+                {
+                    new VariableDeclaration("a"),
+                    new AssignVariable("a"),
+                    new PrintVariable("a"),
+                    new Invocation("Bar", false),
+                    new PrintVariable("a"),
+                }
+            },
+            new VariableDeclaration("a"),
+            new FunctionDeclaration("Bar")
+            {
+                Body =
+                {
+                    new PrintVariable("a"),
+                }
+            },
+            new Invocation("Foo", true),
+        };
+
+        ValidationHelper.ValidateResult(program, $@"
+func Foo {{
+    var a;
+    a = smth;
+    print(a);
+    Bar();
+    print(a);
+}}
+
+var a;
+func Bar {{
+    print(a);
+}}
+
+if (smth) Foo(); {ValidationHelper.Error(s => new UnassignedVariableUsageDescriptor(s, "a"))}
+");
+    }
 }
