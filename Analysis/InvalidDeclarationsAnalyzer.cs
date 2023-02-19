@@ -14,11 +14,6 @@ public sealed class InvalidDeclarationsAnalyzer : IPreorderDeclarationsAnalyzer<
     
     public DeclarationsContext CreateEmptyContext(IDeclarationScope declarations) => new(declarations);
 
-    public DeclarationsContext CreateChildContext(DeclarationsContext context, IDeclarationScope nestedDeclarations)
-    {
-        return new DeclarationsContext(nestedDeclarations);
-    }
-
     public void AnalyzeVariableDeclaration(DeclarationsContext context, VariableDeclaration declaration)
     {
         var variableName = declaration.VariableName;

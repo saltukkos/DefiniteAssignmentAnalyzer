@@ -82,7 +82,7 @@ public sealed class ProgramDeclarationPreorderWalker<TContext> : WalkerBase<TCon
 
             SawNewDeclaration = true;
             NewDeclaration = nestedDeclarations;
-            CurrentContext = _declarationsAnalyzer.CreateChildContext(CurrentContext, nestedDeclarations);
+            CurrentContext = _declarationsAnalyzer.CreateEmptyContext(nestedDeclarations);
         }
     }
 }
