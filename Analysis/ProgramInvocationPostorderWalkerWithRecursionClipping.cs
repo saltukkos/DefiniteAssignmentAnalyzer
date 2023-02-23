@@ -39,7 +39,8 @@ public sealed class ProgramInvocationPostorderWalkerWithRecursionClipping<TConte
         if (!TryPushDeclarationToProcess(declaration, emptyContext))
         {
             var invokedMethodContextProvider = new InvokedMethodContextProvider(declaration);
-            _methodStateAnalyzer.AnalyzeInvocation(context, invocation, emptyContext, invokedMethodContextProvider);
+            var recursionContext = _methodStateAnalyzer.CreateRecursionContext(declaration);
+            _methodStateAnalyzer.AnalyzeInvocation(context, invocation, recursionContext, invokedMethodContextProvider);
             return true;
         }
 

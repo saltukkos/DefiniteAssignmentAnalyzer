@@ -6,6 +6,8 @@ public interface IPostorderMethodStateAnalyzer<TContext>
 {
     TContext CreateEmptyContext(IDeclarationScope declarations);
 
+    TContext CreateRecursionContext(IDeclarationScope declarations);
+
     void AnalyzeAssignVariable(TContext context, AssignVariable statement);
 
     void AnalyzePrintVariable(TContext context, PrintVariable statement);

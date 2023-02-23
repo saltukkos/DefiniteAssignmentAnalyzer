@@ -18,8 +18,15 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
 
     public DefiniteAssignmentContext CreateEmptyContext(IDeclarationScope declarations) => new(declarations);
 
+    public DefiniteAssignmentContext CreateRecursionContext(IDeclarationScope declarations) => new(declarations);
+
     public void AnalyzeAssignVariable(DefiniteAssignmentContext context, AssignVariable statement)
     {
+        if (!VerifyStatementIsReachable(context, statement))
+        {
+            return;
+        }
+
         if (context.AllAvailableVariableDeclarations.TryGetValue(statement.VariableName, out var declaration))
         {
             context.CurrentContextAssignments.Add(declaration);
@@ -28,6 +35,11 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
 
     public void AnalyzePrintVariable(DefiniteAssignmentContext context, PrintVariable statement)
     {
+        if (!VerifyStatementIsReachable(context, statement))
+        {
+            return;
+        }
+
         if (context.AllAvailableVariableDeclarations.TryGetValue(statement.VariableName, out var declaration))
         {
             AnalyzeVariableAccess(context, declaration, statement);
@@ -39,6 +51,11 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
     public void AnalyzeInvocation(DefiniteAssignmentContext context, Invocation invocation,
         DefiniteAssignmentContext invokedMethodContext, IInvokedMethodContextProvider contextProvider)
     {
+        if (!VerifyStatementIsReachable(context, invocation))
+        {
+            return;
+        }
+
         foreach (var dependency in invokedMethodContext.ParentContextAssignDependencies)
         {
             AnalyzeVariableAccess(context, dependency, invocation);
@@ -46,10 +63,15 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
 
         if (!invocation.IsConditional)
         {
-            var assignments = contextProvider.GetContext(_assignmentsAnalyzer);
-            foreach (var assignment in assignments.ParentContextDefiniteAssignments)
+            var assignmentsContext = contextProvider.GetContext(_assignmentsAnalyzer);
+            foreach (var assignment in assignmentsContext.ParentContextDefiniteAssignments)
             {
                 context.CurrentContextAssignments.Add(assignment);
+            }
+
+            if (assignmentsContext.IsAlwaysRecursive)
+            {
+                context.SawInfiniteRecursion = true;
             }
         }
     }
@@ -74,6 +96,17 @@ public sealed class DefiniteAssignmentAnalyzer : IPostorderMethodStateAnalyzer<D
             context.ParentContextAssignDependencies.Add(variable);
         }
     }
+
+    private bool VerifyStatementIsReachable(DefiniteAssignmentContext context, IStatement statement)
+    {
+        if (context.SawInfiniteRecursion)
+        {
+            _inspectionDescriptorCollector.ReportInspection(new UnreachableStatementDescriptor(statement));
+            return false;
+        }
+
+        return true;
+    }
 }
 
 public sealed class DefiniteAssignmentContext
@@ -84,6 +117,7 @@ public sealed class DefiniteAssignmentContext
         AllAvailableVariableDeclarations = declarationScope.AllAvailableVariableDeclarations;
     }
 
+    public bool SawInfiniteRecursion { get; set; }
     public IReadOnlyDictionary<string,VariableDeclaration> AllAvailableVariableDeclarations { get; }
     public IReadOnlySet<VariableDeclaration> CurrentContextVariableDeclarations { get; }
     public HashSet<VariableDeclaration> CurrentContextAssignments { get; } = new();

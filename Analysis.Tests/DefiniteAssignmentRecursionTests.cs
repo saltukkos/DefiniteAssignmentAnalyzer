@@ -107,10 +107,10 @@ var b;
 func Foo {{
     print(a);
     Foo();
-    print(b);
+    print(b); {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
 }}
 
-Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a"), new(s, "b")})}
+Foo(); {ValidationHelper.Error(s => new UnassignedVariableUsageDescriptor(s, "a"))}
 ");
     }
 
@@ -139,10 +139,10 @@ var b;
 func Foo {{
     print(a);
     Foo();
-    print(b);
+    print(b); {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
 }}
 
-if (smth) Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "a"), new(s, "b")})}
+if (smth) Foo(); {ValidationHelper.Error(s => new UnassignedVariableUsageDescriptor(s, "a"))}
 ");
     }
 
@@ -173,9 +173,9 @@ func Foo {{
     var b;
     print(a); {ValidationHelper.Error(s => new UnassignedVariableUsageDescriptor(s, "a"))}
     Foo();
-    print(b);
-    a = smth;
-    b = smth;
+    print(b); {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
+    a = smth; {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
+    b = smth; {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
 }}
 
 Foo();
@@ -200,16 +200,16 @@ Foo();
             new PrintVariable("a"),
         };
 
-        ValidationHelper.ValidateResult(program, @"
+        ValidationHelper.ValidateResult(program, $@"
 var a;
 
-func Foo {
+func Foo {{
     Foo();
-    a = smth;
-}
+    a = smth; {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))} 
+}}
 
 Foo();
-print(a);
+print(a); {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
 ");
     }
 
@@ -240,9 +240,9 @@ var b;
 func Foo {{
     print(a);
     Foo();
-    print(b);
-    a = smth;
-    b = smth;
+    print(b); {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
+    a = smth; {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
+    b = smth; {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
 }}
 
 Foo(); {ValidationHelper.Error(s => new UnassignedVariableUsageDescriptor(s, "a"))}
@@ -458,6 +458,70 @@ Foo(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {ne
 Baz(); {ValidationHelper.Errors(s => new UnassignedVariableUsageDescriptor[] {new(s, "c"), new(s, "d")})}
 Qux();
 Bar();
+");
+    }
+    
+    [Test]
+    public void Analyze_FunctionCallIsAlwaysRecursiveToSelf_PrintAfterCallIsUnreachable()
+    {
+        var program = new Program
+        {
+            new VariableDeclaration("a"),
+            new FunctionDeclaration("Recursive")
+            {
+                Body =
+                {
+                    new Invocation("Recursive", isConditional: false)
+                }
+            },
+            new Invocation("Recursive", isConditional: false),
+            new PrintVariable("a")
+        };
+
+        ValidationHelper.ValidateResult(program, $@"
+var a;
+func Recursive {{
+    Recursive();
+}}
+Recursive();
+print(a); {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
+");
+    }
+    
+    [Test]
+    public void Analyze_FunctionCallIsAlwaysRecursiveThroughAnother_PrintAfterCallIsUnreachable()
+    {
+        var program = new Program
+        {
+            new VariableDeclaration("a"),
+            new FunctionDeclaration("F")
+            {
+                Body =
+                {
+                    new Invocation("G", isConditional: false)
+                }
+            },
+            new FunctionDeclaration("G")
+            {
+                Body =
+                {
+                    new Invocation("F", isConditional: false)
+                }
+            },
+            new Invocation("F", isConditional: false),
+            new PrintVariable("a")
+        };
+
+        ValidationHelper.ValidateResult(program, $@"
+var a;
+func F {{
+    G();
+}}
+func G {{
+    F();
+}}
+F();
+print(a); {ValidationHelper.Error(s => new UnreachableStatementDescriptor(s))}
 ");
     }
 }

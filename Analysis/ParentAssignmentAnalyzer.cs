@@ -5,7 +5,9 @@ namespace Analysis;
 
 public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<ParentAssignmentsContext>
 {
-    public ParentAssignmentsContext CreateEmptyContext(IDeclarationScope declarations) => new(declarations);
+    public ParentAssignmentsContext CreateEmptyContext(IDeclarationScope declarations) => new(declarations, false);
+
+    public ParentAssignmentsContext CreateRecursionContext(IDeclarationScope declarations) => new(declarations, true);
 
     public void AnalyzeAssignVariable(ParentAssignmentsContext context, AssignVariable statement)
     {
@@ -30,15 +32,23 @@ public sealed class ParentAssignmentAnalyzer : IPostorderMethodStateAnalyzer<Par
         {
             context.ParentContextDefiniteAssignments.Add(assignment);
         }
+        
+        if (invokedMethodContext.IsAlwaysRecursive)
+        {
+            context.IsAlwaysRecursive = true;
+        }
     }
 }
 
 public sealed class ParentAssignmentsContext
 {
-    public ParentAssignmentsContext(IDeclarationScope declarations)
+    public ParentAssignmentsContext(IDeclarationScope declarations, bool isAlwaysRecursive)
     {
+        IsAlwaysRecursive = isAlwaysRecursive;
         AllAvailableVariableDeclarations = declarations.AllAvailableVariableDeclarations;
     }
+
+    public bool IsAlwaysRecursive { get; set; }
 
     public IReadOnlyDictionary<string, VariableDeclaration> AllAvailableVariableDeclarations { get; }
     

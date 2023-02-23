@@ -60,7 +60,8 @@ public sealed class DeclarationResolver
             }
 
             var functionName = functionDeclaration.FunctionName;
-            if (availableFunctionDeclarationsBuilder.ContainsKey(functionName))
+            if (availableFunctionDeclarationsBuilder.ContainsKey(functionName) ||
+                availableVariablesDeclarationsBuilder.ContainsKey(functionName))
             {
                 _inspectionDescriptorCollector.ReportInspection(
                     new ConflictingIdentifierNameDescriptor(functionDeclaration, functionDeclaration.FunctionName));

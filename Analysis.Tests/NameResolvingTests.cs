@@ -55,6 +55,30 @@ a = smth;
     }
 
     [Test]
+    public void Analyze_FunctionHidesVariableWithSameNameFromOuterScope_InspectionReported()
+    {
+        var program = new Program
+        {
+            new VariableDeclaration("X"),
+            new FunctionDeclaration("F")
+            {
+                Body =
+                {
+                    new FunctionDeclaration("X")
+                }
+            }
+        };
+        
+        ValidationHelper.ValidateResult(program, $@"
+var X;
+func F {{
+    func X {{
+    }} {ValidationHelper.Error(s => new ConflictingIdentifierNameDescriptor(s, "X"))}
+}}
+");
+    }
+
+    [Test]
     public void Analyze_TwoFunctionsWithSameName_InspectionReported()
     {
         var program = new Program
